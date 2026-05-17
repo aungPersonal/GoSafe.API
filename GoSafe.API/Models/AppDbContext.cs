@@ -9,12 +9,14 @@ namespace GoSafe.API.Models
         }
 
         public DbSet<tblUser> tblUsers { get; set; }
+        public DbSet<tblRouteTemplate> tblRouteTemplates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Force EF Core to use the exact table name "tblUser" 
             // instead of the pluralized "tblUsers"
             modelBuilder.Entity<tblUser>().ToTable("tblUser");
+            modelBuilder.Entity<tblRouteTemplate>().ToTable("tblRouteTemplate");
         }
     }
 }
