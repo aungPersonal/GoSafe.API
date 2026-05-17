@@ -1,6 +1,8 @@
 using GoSafe.API.Common;
+using GoSafe.API.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
@@ -11,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Adding Authentication
 builder.Services.AddAuthentication(options =>
@@ -42,7 +46,7 @@ builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Movie.API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "GoSafe.API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", //Name the security scheme
      new OpenApiSecurityScheme
      {
