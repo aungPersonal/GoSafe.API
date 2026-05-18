@@ -10,13 +10,18 @@ namespace GoSafe.API.Models
 
         public DbSet<tblUser> tblUsers { get; set; }
         public DbSet<tblRouteTemplate> tblRouteTemplates { get; set; }
+        public DbSet<configRole> configRoles { get; set; }
+        public DbSet<tblBus> tblBuses { get; set; }
+        public DbSet<tblToken> tblTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Force EF Core to use the exact table name "tblUser" 
-            // instead of the pluralized "tblUsers"
             modelBuilder.Entity<tblUser>().ToTable("tblUser");
             modelBuilder.Entity<tblRouteTemplate>().ToTable("tblRouteTemplate");
+            modelBuilder.Entity<configRole>().ToTable("configRole");
+            modelBuilder.Entity<tblBus>().ToTable("tblBus");
+            modelBuilder.Entity<tblToken>().ToTable("tblToken");
+           
         }
     }
 }

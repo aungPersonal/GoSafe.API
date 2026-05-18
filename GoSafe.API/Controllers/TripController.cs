@@ -1,6 +1,14 @@
-﻿using GoSafe.API.Models;
+﻿using GoSafe.API.Dtos.Trip;
+using GoSafe.API.Interfaces;
+using GoSafe.API.Models;
+using GoSafe.API.Utility;
+using GoSafe.Common;
+using GoSafe.LoggerTool;
+using GoSafe.Utility;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace GoSafe.API.Controllers
 {
@@ -9,30 +17,85 @@ namespace GoSafe.API.Controllers
     public class TripController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ITripRepo repo;
+        private readonly Logger log;
 
-        public TripController(AppDbContext context)
+        public TripController(AppDbContext context, ITripRepo repo, Logger log)
         {
             _context = context;
+            this.repo = repo;
+            this.log = log;
         }
 
-        [HttpPost]
-        public IActionResult CreateTrip([FromBody] tblRouteTemplate trip)
+        #region Bus
+        [Authorize]
+        [HttpPost("SaveBus")]
+        public async Task<IActionResult> SaveBus(SaveBusRequest req)
         {
-            if (trip == null)
+            try
             {
-                return BadRequest("Trip data is null.");
+                var res = await repo.SaveBus(req, JwtHelper.Id(User));
+                return StatusCode(res.Result.StatusCode, res);
             }
-            // You can add additional validation here (e.g., check for required fields)
-            _context.tblRouteTemplates.Add(trip);
-            _context.SaveChanges();
-            return Ok(trip.Id);
+            catch (AppException ex)
+            {
+                return StatusCode(StatusCodes.Status400BadRequest,
+                    ErrorHandler.GetInfoResponse(ex));
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ErrorHandler.GetErrorResponse(ex));
+            }
         }
 
-        [HttpGet]
-        public IActionResult GetAllTrips()
+        [Authorize]
+        [HttpDelete("DeleteBus")]
+        public async Task<IActionResult> DeleteBus(long Id)
         {
-            var trips = _context.tblRouteTemplates.ToList();
-            return Ok(trips);
+            try
+            {
+                var res = await repo.DeleteBus(Id, JwtHelper.Id(User));
+                return StatusCode(res.Result.StatusCode, res);
+            }
+            catch (AppException ex)
+            {
+                return StatusCode(StatusCodes.Status400BadRequest,
+                    ErrorHandler.GetInfoResponse(ex));
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ErrorHandler.GetErrorResponse(ex));
+            }
         }
+
+        [Authorize]
+        [HttpGet("GetBusList")]
+        public async Task<IActionResult> GetBusList([FromQuery] GetBusListRequest req)
+        {
+            try
+            {
+                var res = await repo.GetBusList(req);
+                return StatusCode(res.Result.StatusCode, res);
+            }
+            catch (AppException ex)
+            {
+                return StatusCode(StatusCodes.Status400BadRequest,
+                    ErrorHandler.GetInfoResponse(ex));
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ErrorHandler.GetErrorResponse(ex));
+            }
+        }
+        #endregion
     }
 }

@@ -1,5 +1,8 @@
 using GoSafe.API.Common;
+using GoSafe.API.Interfaces;
 using GoSafe.API.Models;
+using GoSafe.API.Repo;
+using GoSafe.LoggerTool;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +14,8 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+CommonConstants.LoadConfig();
 
 builder.Services.AddControllers();
 
@@ -76,6 +81,13 @@ builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 10737418240; // 10 GB
 });
+
+
+LoggerOptions loggerOptions = new();
+builder.Configuration.GetSection("Logging").GetSection("CustomLogger").GetSection("Options").Bind(loggerOptions);
+builder.Services.AddSingleton(loggerOptions);
+builder.Services.AddSingleton<Logger>();
+builder.Services.AddScoped<IUserRepo, UserRepo>();
 
 var app = builder.Build();
 

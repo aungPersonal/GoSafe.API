@@ -7,10 +7,11 @@ namespace GoSafe.API.Models
     {
         [Key]
         public long Id { get; set; } // BIGINT maps to long
+        public string LoginName { get; set; } = null!;
 
         [Required]
         [MaxLength(50)]
-        public string Name { get; set; }
+        public string FullName { get; set; }
 
         [MaxLength(50)]
         public string Phone { get; set; }
