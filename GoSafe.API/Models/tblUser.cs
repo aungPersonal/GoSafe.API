@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GoSafe.API.Models
 {
-    public class tblUser
+    public class TblUser : EntityCommon
     {
         [Key]
         public long Id { get; set; } // BIGINT maps to long
@@ -14,9 +14,9 @@ namespace GoSafe.API.Models
         public string FullName { get; set; }
 
         [MaxLength(50)]
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
-        public int? RoleId { get; set; } // Foreign Key
+        public int? RoleId { get; set; } 
 
         public bool IsDeleted { get; set; } = false;
 
@@ -25,11 +25,6 @@ namespace GoSafe.API.Models
 
         [MaxLength(50)]
         public string VCode { get; set; }
-
-        // Audit Fields
-        public DateTime CreatedAt { get; set; }
-        public long? CreatedBy { get; set; }
-        public DateTime? UpdatedAt { get; set; }
-        public long? UpdatedBy { get; set; }
+        
     }
 }

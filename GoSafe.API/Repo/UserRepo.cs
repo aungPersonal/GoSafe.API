@@ -1,6 +1,7 @@
 ﻿using GoSafe.API.Common;
 using GoSafe.API.Interfaces;
 using GoSafe.API.Models;
+using GoSafe.API.Utility;
 using GoSafe.Dto.User;
 using GoSafe.Utility;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,66 @@ namespace GoSafe.API.Repo
             this.context = context;
         }
 
+
+        public async Task<LoginResponse> Login(LoginRequest req)
+        {
+            try
+            {
+                var res = new LoginResponse();
+                DateTime expirationDateTime = DateTime.UtcNow;
+                var account = await context.TblUsers.Where(x => x.LoginName == req.LoginName && x.IsDeleted == false && x.IsDeleted == false).SingleOrDefaultAsync();
+                if (account == null)
+                {
+                    res.Result.StatusCode = StatusCodes.Status401Unauthorized;
+                    res.Result.AddErrorMessage("Login name or password is wrong!");
+                    return res;
+                }
+                else
+                {
+                    var encodedPass = PasswordHelper.EncodePassword(req.Password, account.VCode);
+                    if (account.PasswordHash != encodedPass)
+                    {
+                        res.Result.StatusCode = StatusCodes.Status401Unauthorized;
+                        res.Result.AddErrorMessage("Login name or password is wrong!");
+                        return res;
+                    }
+                }
+
+                var token = GenerateToken(account, out expirationDateTime);
+
+                await UpdateToken(token, expirationDateTime, account.Id);
+
+                res.Token = token;
+                res.Token.FullName = account.FullName;
+                res.Token.Id = account.Id;
+                res.Token.Role = ((RoleEnum)account.RoleId!.Value)!.ToString();
+                res.Token.ExpirationDateTime = DateTimeTool.ConvertIntoMyanTime(expirationDateTime);
+                return res;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        private async Task UpdateToken(TokenRes token, DateTime expirationDateTime, long accountId)
+        {
+            var tokenEntity = new TblToken()
+            {
+                Id = Guid.NewGuid().ToString(),
+                AccountId = accountId,
+                AccessToken = token.AccessToken,
+                RefreshToken = token.RefreshToken,
+                ExpirationTime = expirationDateTime,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = accountId,
+            };
+            context.TblTokens.Add(tokenEntity);
+            await context.SaveChangesAsync();
+        }
+
+
         public async Task<RegisterResponse> Register(RegisterRequest req)
         {
             try
@@ -33,7 +94,7 @@ namespace GoSafe.API.Repo
                     {
                         var res = new RegisterResponse();
 
-                        var isDuplicate = await context.tblUsers.AnyAsync(x => x.IsDeleted == false && x.LoginName == req.LoginName);
+                        var isDuplicate = await context.TblUsers.AnyAsync(x => x.IsDeleted == false && x.LoginName == req.LoginName);
                         if (isDuplicate)
                         {
                             res.Result.StatusCode = StatusCodes.Status400BadRequest;
@@ -42,7 +103,7 @@ namespace GoSafe.API.Repo
                         }
                         var vCode = PasswordHelper.GenerateSalt(CommonConstants.PASSWORD_SALT_LENGTH);
                         var encodedPass = PasswordHelper.EncodePassword(req.Password, vCode);
-                        var account = new tblUser()
+                        var account = new TblUser()
                         {
                             LoginName = req.LoginName,
                             VCode = vCode,
@@ -54,23 +115,24 @@ namespace GoSafe.API.Repo
                             CreatedBy = 0
                         };
 
-                        await context.tblUsers.AddAsync(account);
+                        await context.TblUsers.AddAsync(account);
                         await context.SaveChangesAsync();
 
                         DateTime expirationDateTime = DateTime.UtcNow;
 
                         var token = GenerateToken(account, out expirationDateTime);
 
-                        var tokenEntity = new tblToken()
+                        var tokenEntity = new TblToken()
                         {
                             Id = Guid.NewGuid().ToString(),
                             AccountId = account.Id,
                             AccessToken = token.AccessToken,
                             RefreshToken = token.RefreshToken,
                             ExpirationTime = expirationDateTime,
-                            CreatedDateTime = DateTime.UtcNow
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = account.Id
                         };
-                        await context.tblTokens.AddAsync(tokenEntity);
+                        await context.TblTokens.AddAsync(tokenEntity);
                         await context.SaveChangesAsync();
                         await tran.CommitAsync();
 
@@ -92,7 +154,7 @@ namespace GoSafe.API.Repo
             }
         }
 
-        private TokenRes GenerateToken(tblUser account, out DateTime expirationDateTime)
+        private TokenRes GenerateToken(TblUser account, out DateTime expirationDateTime)
         {
 
             var authClaims = new List<Claim>
@@ -134,6 +196,45 @@ namespace GoSafe.API.Repo
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
+
+
+        public async Task<RefreshTokenResponse> RefreshToken(RefreshTokenRequest req)
+        {
+            try
+            {
+                var res = new RefreshTokenResponse();
+                var dbtoken = await context.TblTokens.Where(x => x.AccessToken == req.AccessToken && x.RefreshToken == req.RefreshToken).SingleOrDefaultAsync();
+                if (dbtoken is null)
+                {
+                    res.Result.StatusCode = StatusCodes.Status401Unauthorized;
+                    res.Result.AddErrorMessage("Failed to refresh token, please login again!");
+                    return res;
+                }
+
+                var account = await context.TblUsers.Where(x => x.Id == dbtoken.AccountId).SingleOrDefaultAsync();
+                if (account is null)
+                {
+                    res.Result.StatusCode = StatusCodes.Status401Unauthorized;
+                    res.Result.AddErrorMessage("Failed to refresh token, please login again!");
+                    return res;
+                }
+
+                var expirationDateTime = DateTime.UtcNow;
+                var token = GenerateToken(account, out expirationDateTime);
+
+                await UpdateToken(token, expirationDateTime, account.Id);
+
+                res.Token = token;
+                res.Token.ExpirationDateTime = DateTimeTool.ConvertIntoMyanTime(expirationDateTime);
+                return res;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
 
     }
 }

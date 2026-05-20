@@ -2,7 +2,7 @@
 
 namespace GoSafe.API.Models
 {
-    public class tblToken
+    public class TblToken : EntityCommon
     {
         public string Id { get; set; } = null!;
 
@@ -13,8 +13,5 @@ namespace GoSafe.API.Models
         public string RefreshToken { get; set; } = null!;
 
         public DateTime ExpirationTime { get; set; }
-
-        public DateTime CreatedDateTime { get; set; }
-
     }
 }

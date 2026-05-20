@@ -88,6 +88,7 @@ builder.Configuration.GetSection("Logging").GetSection("CustomLogger").GetSectio
 builder.Services.AddSingleton(loggerOptions);
 builder.Services.AddSingleton<Logger>();
 builder.Services.AddScoped<IUserRepo, UserRepo>();
+builder.Services.AddScoped<ITripRepo, TripRepo>();
 
 var app = builder.Build();
 

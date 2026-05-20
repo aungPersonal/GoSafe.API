@@ -27,5 +27,11 @@ namespace GoSafe.API.Controllers
             log.Info("Log Test: Info");
             return Ok($"Log Test: Info");
         }
+
+        [HttpGet("GetUTCNow")]
+        public async Task<IActionResult> GetUTNow()
+        {
+            return Ok(DateTime.UtcNow);
+        }
     }
 }

@@ -8,19 +8,24 @@ namespace GoSafe.API.Models
         {
         }
 
-        public DbSet<tblUser> tblUsers { get; set; }
-        public DbSet<tblRouteTemplate> tblRouteTemplates { get; set; }
-        public DbSet<configRole> configRoles { get; set; }
-        public DbSet<tblBus> tblBuses { get; set; }
-        public DbSet<tblToken> tblTokens { get; set; }
+        public DbSet<TblUser> TblUsers { get; set; }
+        public DbSet<TblRouteTemplate> tblRouteTemplates { get; set; }
+        public DbSet<ConfigRole> ConfigRoles { get; set; }
+        public DbSet<TblBus> TblBuses { get; set; }
+        public DbSet<TblToken> TblTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<tblUser>().ToTable("tblUser");
-            modelBuilder.Entity<tblRouteTemplate>().ToTable("tblRouteTemplate");
-            modelBuilder.Entity<configRole>().ToTable("configRole");
-            modelBuilder.Entity<tblBus>().ToTable("tblBus");
-            modelBuilder.Entity<tblToken>().ToTable("tblToken");
+            modelBuilder.Entity<TblUser>().ToTable("TblUser");
+            modelBuilder.Entity<TblRouteTemplate>().ToTable("TblRouteTemplate");
+            modelBuilder.Entity<ConfigRole>().ToTable("ConfigRole");
+
+            modelBuilder.Entity<TblBus>().ToTable("TblBus");
+            //.Property(x => x.CreatedAt).HasColumnType("timestamp without  time zone");
+            modelBuilder.Entity<TblBus>().ToTable("TblBus");
+              //.Property(x => x.UpdatedAt).HasColumnType("timestamp without  time zone");
+
+            modelBuilder.Entity<TblToken>().ToTable("TblToken");
            
         }
     }

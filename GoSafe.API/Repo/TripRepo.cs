@@ -26,7 +26,7 @@ namespace GoSafe.API.Repo
 
                 var isInsert = req.Id == 0;
 
-                var duplicate = await context.tblBuses
+                var duplicate = await context.TblBuses
                     .AnyAsync(x =>
                         x.PlateNo == req.PlateNo &&
                         (isInsert || x.Id != req.Id));
@@ -34,9 +34,9 @@ namespace GoSafe.API.Repo
                 if (duplicate)
                     throw new AppException("Plate No already exists.");
 
-                tblBus? bus = isInsert
-                    ? new tblBus()
-                    : await context.tblBuses
+                TblBus? bus = isInsert
+                    ? new TblBus()
+                    : await context.TblBuses
                         .SingleOrDefaultAsync(x => x.Id == req.Id);
 
                 if (!isInsert && bus == null)
@@ -51,14 +51,14 @@ namespace GoSafe.API.Repo
                     bus.CreatedAt = DateTime.UtcNow;
                     bus.CreatedBy = loginUserId;
 
-                    context.tblBuses.Add(bus);
+                    context.TblBuses.Add(bus);
                 }
                 else
                 {
                     bus.UpdatedAt = DateTime.UtcNow;
                     bus.UpdatedBy = loginUserId;
 
-                    context.tblBuses.Update(bus);
+                    //context.TblBuses.Update(bus);
                 }
 
                 await context.SaveChangesAsync();
@@ -77,13 +77,13 @@ namespace GoSafe.API.Repo
             {
                 var res = new CommonResult();
 
-                var bus = await context.tblBuses
+                var bus = await context.TblBuses
                     .SingleOrDefaultAsync(x => x.Id == Id);
 
                 if (bus == null)
                     throw new AppException("Bus not found.");
 
-                context.tblBuses.Remove(bus);
+                context.TblBuses.Remove(bus);
 
                 await context.SaveChangesAsync();
 
@@ -102,13 +102,15 @@ namespace GoSafe.API.Repo
                 var res = new GetBusListResponse();
 
                 var query =
-                    from b in context.tblBuses
+                    from b in context.TblBuses
                     where
                         (string.IsNullOrEmpty(req.Name) || b.Name.Contains(req.Name))
                         && (string.IsNullOrEmpty(req.PlateNo) || b.PlateNo.Contains(req.PlateNo))
                     select b;
 
                 res.TotalItem = await query.CountAsync();
+
+                TimeZoneInfo myanmarTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Myanmar Standard Time");
 
                 res.Items = await query
                     .OrderByDescending(x => x.CreatedAt)
@@ -120,7 +122,8 @@ namespace GoSafe.API.Repo
                         Name = x.Name,
                         PlateNo = x.PlateNo,
                         Description = x.Description,
-                        CreatedAt = x.CreatedAt
+                        CreatedAt = DateTimeTool.ConvertIntoMyanTime(x.CreatedAt),
+                        UpdatedAt = x.UpdatedAt == null ? null : DateTimeTool.ConvertIntoMyanTime(x.UpdatedAt.Value),
                     })
                     .ToListAsync();
 
@@ -131,6 +134,8 @@ namespace GoSafe.API.Repo
                 throw;
             }
         }
+
+        
         #endregion
     }
 }
