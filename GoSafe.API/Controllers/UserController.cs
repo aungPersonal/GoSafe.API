@@ -1,10 +1,12 @@
 ﻿using GoSafe.API.Common;
 using GoSafe.API.Interfaces;
 using GoSafe.API.Models;
+using GoSafe.API.Utility;
 using GoSafe.Common;
 using GoSafe.Dto.User;
 using GoSafe.LoggerTool;
 using GoSafe.Utility;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -75,6 +77,80 @@ namespace GoSafe.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, ErrorHandler.GetErrorResponse(ex));
             }
         }
+
+        #region CRUD
+        [Authorize]
+        [HttpPost("SaveUser")]
+        public async Task<IActionResult> SaveUser(SaveUserRequest req)
+        {
+            try
+            {
+                var res = await repo.SaveUser(req, JwtHelper.Id(User));
+                return StatusCode(res.Result.StatusCode, res);
+            }
+            catch (AppException ex)
+            {
+                return StatusCode(
+                    StatusCodes.Status400BadRequest,
+                    ErrorHandler.GetInfoResponse(ex));
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ErrorHandler.GetErrorResponse(ex));
+            }
+        }
+
+        [Authorize]
+        [HttpDelete("DeleteUser")]
+        public async Task<IActionResult> DeleteUser(long Id)
+        {
+            try
+            {
+                var res = await repo.DeleteUser(Id, JwtHelper.Id(User));
+                return StatusCode(res.Result.StatusCode, res);
+            }
+            catch (AppException ex)
+            {
+                return StatusCode(
+                    StatusCodes.Status400BadRequest,
+                    ErrorHandler.GetInfoResponse(ex));
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ErrorHandler.GetErrorResponse(ex));
+            }
+        }
+
+        [Authorize]
+        [HttpGet("GetUserList")]
+        public async Task<IActionResult> GetUserList([FromQuery] GetUserListRequest req)
+        {
+            try
+            {
+                var res = await repo.GetUserList(req);
+                return StatusCode(res.Result.StatusCode, res);
+            }
+            catch (AppException ex)
+            {
+                return StatusCode(
+                    StatusCodes.Status400BadRequest,
+                    ErrorHandler.GetInfoResponse(ex));
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ErrorHandler.GetErrorResponse(ex));
+            }
+        }
+        #endregion
 
     }
 }

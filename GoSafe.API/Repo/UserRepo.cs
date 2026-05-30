@@ -2,6 +2,7 @@
 using GoSafe.API.Interfaces;
 using GoSafe.API.Models;
 using GoSafe.API.Utility;
+using GoSafe.Dto.Common;
 using GoSafe.Dto.User;
 using GoSafe.Utility;
 using Microsoft.EntityFrameworkCore;
@@ -82,7 +83,6 @@ namespace GoSafe.API.Repo
             context.TblTokens.Add(tokenEntity);
             await context.SaveChangesAsync();
         }
-
 
         public async Task<RegisterResponse> Register(RegisterRequest req)
         {
@@ -211,7 +211,7 @@ namespace GoSafe.API.Repo
                     return res;
                 }
 
-                var account = await context.TblUsers.Where(x => x.Id == dbtoken.AccountId).SingleOrDefaultAsync();
+                var account = await context.TblUsers.Where(x => x.Id == dbtoken.AccountId && x.IsDeleted == false).SingleOrDefaultAsync();
                 if (account is null)
                 {
                     res.Result.StatusCode = StatusCodes.Status401Unauthorized;
@@ -219,12 +219,18 @@ namespace GoSafe.API.Repo
                     return res;
                 }
 
+                context.TblTokens.Remove(dbtoken);
+                await context.SaveChangesAsync();
+
                 var expirationDateTime = DateTime.UtcNow;
                 var token = GenerateToken(account, out expirationDateTime);
 
                 await UpdateToken(token, expirationDateTime, account.Id);
 
                 res.Token = token;
+                res.Token.FullName = account.FullName;
+                res.Token.Id = account.Id;
+                res.Token.Role = ((RoleEnum)account.RoleId!.Value)!.ToString();
                 res.Token.ExpirationDateTime = DateTimeTool.ConvertIntoMyanTime(expirationDateTime);
                 return res;
             }
@@ -236,5 +242,147 @@ namespace GoSafe.API.Repo
         }
 
 
+        #region CRUD
+        public async Task<CommonResult> SaveUser(SaveUserRequest req, long loginUserId)
+        {
+            try
+            {
+                var res = new CommonResult();
+
+                var isInsert = req.Id == 0;
+
+                if(isInsert && string.IsNullOrEmpty(req.Password))
+                {
+                    throw new AppException("Password is required for new user.");
+                }
+
+                var duplicate = await context.TblUsers.AnyAsync(x =>
+                        x.LoginName == req.LoginName &&
+                        (isInsert || x.Id != req.Id));
+
+                if (duplicate)
+                    throw new AppException("Login Name already exists.");
+
+                TblUser? user = isInsert
+                    ? new TblUser()
+                    : await context.TblUsers.SingleOrDefaultAsync(x => x.Id == req.Id);
+
+                if (!isInsert && user == null)
+                    throw new AppException("User not found.");
+
+                user!.LoginName = req.LoginName;
+                user.FullName = req.FullName;
+                user.Phone = req.Phone;
+                user.RoleId = req.RoleId;
+
+                #region password
+                if (string.IsNullOrEmpty(req.Password) == false)
+                {
+                    var vCode = PasswordHelper.GenerateSalt(CommonConstants.PASSWORD_SALT_LENGTH);
+                    var encodedPass = PasswordHelper.EncodePassword(req.Password, vCode);
+                    user.VCode = vCode;
+                    user.PasswordHash = encodedPass;
+                }
+               
+                #endregion
+
+                if (isInsert)
+                {
+                    user.CreatedAt = DateTime.UtcNow;
+                    user.CreatedBy = loginUserId;
+
+                    context.TblUsers.Add(user);
+                }
+                else
+                {
+                    user.UpdatedAt = DateTime.UtcNow;
+                    user.UpdatedBy = loginUserId;
+
+                    context.TblUsers.Update(user);
+                }
+
+                await context.SaveChangesAsync();
+
+                return res;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<CommonResult> DeleteUser(long Id, long loginUserId)
+        {
+            try
+            {
+                var res = new CommonResult();
+
+                var user = await context.TblUsers
+                    .SingleOrDefaultAsync(x => x.Id == Id);
+
+                if (user == null)
+                    throw new AppException("User not found.");
+
+                context.TblUsers.Remove(user);
+
+                await context.SaveChangesAsync();
+
+                return res;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<GetUserListResponse> GetUserList(GetUserListRequest req)
+        {
+            try
+            {
+                if (req.RoleId == 0)
+                    req.RoleId = null;
+
+                var res = new GetUserListResponse();
+
+                var query =
+                    from u in context.TblUsers
+                    where
+                        (string.IsNullOrEmpty(req.LoginName) || u.LoginName.Contains(req.LoginName))
+                        && (string.IsNullOrEmpty(req.FullName) || u.FullName.Contains(req.FullName))
+                        && (string.IsNullOrEmpty(req.Phone) || u.Phone!.Contains(req.Phone))
+                        && (req.RoleId == null || u.RoleId == req.RoleId)
+                        && (
+                            string.IsNullOrEmpty(req.Filter)
+                            || u.LoginName.Contains(req.Filter)
+                            || u.FullName.Contains(req.Filter)
+                            || (u.Phone != null && u.Phone.Contains(req.Filter))
+                        )
+                    select u;
+
+                res.TotalItem = await query.CountAsync();
+
+                res.Items = await query
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Skip(req.PageNumber * req.PageSize)
+                    .Take(req.PageSize)
+                    .Select(x => new UserModel
+                    {
+                        Id = x.Id,
+                        LoginName = x.LoginName,
+                        FullName = x.FullName,
+                        Phone = x.Phone,
+                        RoleId = x.RoleId,
+                        CreatedAt = x.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return res;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+        #endregion
     }
 }
